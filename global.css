@@ -1,0 +1,92 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+@theme {
+  /* ── BRAND COLORS ── */
+  --color-lingua-purple: #6c4ef5;
+  --color-lingua-deep-purple: #5b3bf6;
+  --color-lingua-blue: #4d88ff;
+  --color-lingua-green: #21c16b;
+
+  /* ── SEMANTIC COLORS ── */
+  --color-success: #21c16b;
+  --color-warning: #ffcb00;
+  --color-streak: #ff8a00;
+  --color-error: #ff4d4f;
+  --color-info: #4d88ff;
+
+  /* ── NEUTRAL COLORS ── */
+  --color-foreground: #001328;
+  --color-muted: #6b7280;
+  --color-divider: #e5e7eb;
+  --color-surface: #f6f7fb;
+  --color-canvas: #ffffff;
+
+  /* ── FONT FAMILIES ── */
+  --font-poppins: "Poppins-Regular";
+  --font-poppins-medium: "Poppins-Medium";
+  --font-poppins-semibold: "Poppins-SemiBold";
+  --font-poppins-bold: "Poppins-Bold";
+}
+
+/* ── TYPOGRAPHY UTILITIES (BEM) ── */
+@layer utilities {
+  /* Page / Screen Title */
+  .heading-1 {
+    font-family: "Poppins-Bold";
+    font-size: 32px;
+    line-height: 38px;
+  }
+
+  /* Section Title */
+  .heading-2 {
+    font-family: "Poppins-SemiBold";
+    font-size: 24px;
+    line-height: 31px;
+  }
+
+  /* Card / Module Title */
+  .heading-3 {
+    font-family: "Poppins-SemiBold";
+    font-size: 20px;
+    line-height: 26px;
+  }
+
+  /* Subheading */
+  .heading-4 {
+    font-family: "Poppins-Medium";
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  /* Important content */
+  .body-lg {
+    font-family: "Poppins-Regular";
+    font-size: 16px;
+    line-height: 26px;
+  }
+
+  /* Body text */
+  .body-md {
+    font-family: "Poppins-Regular";
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  /* Supporting text */
+  .body-sm {
+    font-family: "Poppins-Regular";
+    font-size: 13px;
+    line-height: 21px;
+  }
+
+  /* Labels / meta text */
+  .caption {
+    font-family: "Poppins-Regular";
+    font-size: 11px;
+    line-height: 15px;
+  }
+}
