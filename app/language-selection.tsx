@@ -14,9 +14,11 @@ import { useRouter } from "expo-router";
 import { languages } from "@/data/languages";
 import { images } from "@/constants/images";
 import { Language } from "@/types/learning";
+import { useLanguageStore } from "@/store/languageStore";
 
 export default function LanguageSelectionScreen() {
   const router = useRouter();
+  const { setSelectedLanguage } = useLanguageStore();
   const [selected, setSelected] = useState<Language | null>(null);
   const [search, setSearch] = useState("");
 
@@ -151,7 +153,10 @@ export default function LanguageSelectionScreen() {
             activeOpacity={selected ? 0.85 : 1}
             disabled={!selected}
             onPress={() => {
-              if (selected) router.replace("/");
+              if (selected) {
+                setSelectedLanguage(selected);
+                router.replace("/");
+              }
             }}
             style={!selected ? styles.disabledButton : undefined}
           >
