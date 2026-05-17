@@ -11,14 +11,77 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSignIn, useSSO } from "@clerk/expo";
 import { images } from "@/constants/images";
 import SocialAuthButton from "@/components/SocialAuthButton";
 import VerificationModal from "@/components/VerificationModal";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { signIn } = useSignIn();
+  const { startSSOFlow } = useSSO();
+
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
+
+  const handleSignIn = async () => {
+    if (!signIn || !email.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const { error: sendError } = await signIn.emailCode.sendCode({ emailAddress: email.trim() });
+      if (sendError) {
+        setError(sendError.longMessage ?? sendError.message ?? "Failed to send code.");
+        return;
+      }
+      setModalVisible(true);
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (code: string) => {
+    if (!signIn) throw new Error("Sign-in not initialized.");
+    const { error: verifyError } = await signIn.emailCode.verifyCode({ code });
+    if (verifyError) throw verifyError;
+    if (signIn.status === "complete") {
+      await signIn.finalize({
+        navigate: ({ decorateUrl }) => {
+          setModalVisible(false);
+          router.replace(decorateUrl("/") as "/");
+        },
+      });
+    }
+  };
+
+  const handleResend = async () => {
+    if (!signIn) throw new Error("Sign-in not initialized.");
+    const { error: sendError } = await signIn.emailCode.sendCode({ emailAddress: email.trim() });
+    if (sendError) throw sendError;
+  };
+
+  const handleSSOAuth = async (strategy: "oauth_google" | "oauth_apple" | "oauth_facebook") => {
+    setError("");
+    try {
+      const { createdSessionId, setActive } = await startSSOFlow({ strategy });
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        router.replace("/");
+      }
+    } catch (err: any) {
+      const msg =
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        err?.message ??
+        "Social sign-in failed.";
+      console.error("SSO error:", err);
+      setError(msg);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
@@ -61,16 +124,21 @@ export default function SignInScreen() {
             style={styles.inputText}
             placeholder="alex@gmail.com"
             placeholderTextColor="#9CA3AF"
+            editable={!loading}
           />
         </View>
 
+        {/* Error message */}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         {/* Sign In button */}
         <TouchableOpacity
-          style={styles.primaryBtn}
+          style={[styles.primaryBtn, (loading || !email.trim()) && styles.primaryBtnDisabled]}
           activeOpacity={0.85}
-          onPress={() => setModalVisible(true)}
+          onPress={handleSignIn}
+          disabled={loading || !email.trim()}
         >
-          <Text style={styles.primaryBtnText}>Sign In</Text>
+          <Text style={styles.primaryBtnText}>{loading ? "Sending code…" : "Sign In"}</Text>
         </TouchableOpacity>
 
         {/* Divider */}
@@ -81,9 +149,7 @@ export default function SignInScreen() {
         </View>
 
         {/* Social auth */}
-        <SocialAuthButton provider="google" />
-        <SocialAuthButton provider="facebook" />
-        <SocialAuthButton provider="apple" />
+        <SocialAuthButton provider="google" onPress={() => handleSSOAuth("oauth_google")} />
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -98,6 +164,8 @@ export default function SignInScreen() {
         visible={modalVisible}
         email={email}
         onClose={() => setModalVisible(false)}
+        onVerify={handleVerify}
+        onResend={handleResend}
       />
     </SafeAreaView>
   );
@@ -151,12 +219,21 @@ const styles = StyleSheet.create({
     color: "#001328",
     padding: 0,
   },
+  errorText: {
+    fontFamily: "Poppins-Regular",
+    fontSize: 13,
+    color: "#DC2626",
+    marginTop: 8,
+  },
   primaryBtn: {
     backgroundColor: "#6C4EF5",
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 20,
+  },
+  primaryBtnDisabled: {
+    opacity: 0.6,
   },
   primaryBtnText: {
     fontFamily: "Poppins-SemiBold",
