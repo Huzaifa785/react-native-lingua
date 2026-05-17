@@ -9,28 +9,47 @@ import {
   TouchableOpacity,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Props {
   visible: boolean;
   email: string;
   onClose: () => void;
+  onVerify: (code: string) => Promise<void>;
+  onResend: () => Promise<void>;
 }
 
-export default function VerificationModal({ visible, email, onClose }: Props) {
-  const router = useRouter();
+export default function VerificationModal({ visible, email, onClose, onVerify, onResend }: Props) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const refs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
     if (visible) {
       setCode(["", "", "", "", "", ""]);
+      setError("");
       const timer = setTimeout(() => refs.current[0]?.focus(), 400);
       return () => clearTimeout(timer);
     }
   }, [visible]);
+
+  const handleVerify = async (fullCode: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      await onVerify(fullCode);
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Invalid code. Please try again.";
+      setError(msg);
+      setCode(["", "", "", "", "", ""]);
+      setTimeout(() => refs.current[0]?.focus(), 100);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, "").slice(-1);
@@ -44,19 +63,27 @@ export default function VerificationModal({ visible, email, onClose }: Props) {
       } else {
         const isComplete = newCode.every((d) => d !== "");
         if (isComplete) {
-          onClose();
-          router.replace("/");
+          handleVerify(newCode.join(""));
         }
       }
     }
   };
 
-  const handleKeyPress = (
-    e: { nativeEvent: { key: string } },
-    index: number
-  ) => {
+  const handleKeyPress = (e: { nativeEvent: { key: string } }, index: number) => {
     if (e.nativeEvent.key === "Backspace" && !code[index] && index > 0) {
       refs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      await onResend();
+      setError("");
+      setCode(["", "", "", "", "", ""]);
+      setTimeout(() => refs.current[0]?.focus(), 100);
+    } catch (err: any) {
+      const msg = err?.errors?.[0]?.message ?? "Failed to resend code.";
+      setError(msg);
     }
   };
 
@@ -64,9 +91,7 @@ export default function VerificationModal({ visible, email, onClose }: Props) {
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent>
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.sheet}>
             {/* Handle bar */}
             <View style={styles.handle} />
@@ -81,9 +106,7 @@ export default function VerificationModal({ visible, email, onClose }: Props) {
 
             <Text style={styles.subtitle}>
               We sent a 6-digit code to{"\n"}
-              <Text style={styles.emailHighlight}>
-                {email || "your email"}
-              </Text>
+              <Text style={styles.emailHighlight}>{email || "your email"}</Text>
             </Text>
 
             {/* Code input row */}
@@ -102,13 +125,22 @@ export default function VerificationModal({ visible, email, onClose }: Props) {
                   style={[styles.codeBox, digit ? styles.codeBoxFilled : null]}
                   selectionColor="#6C4EF5"
                   textAlign="center"
+                  editable={!loading}
                 />
               ))}
             </View>
 
+            {/* Error message */}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {/* Loading indicator */}
+            {loading ? (
+              <ActivityIndicator color="#6C4EF5" style={{ marginBottom: 16 }} />
+            ) : null}
+
             <View style={styles.resendRow}>
               <Text style={styles.resendText}>Didn't receive it? </Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={handleResend} disabled={loading}>
                 <Text style={styles.resendLink}>Resend code</Text>
               </TouchableOpacity>
             </View>
@@ -168,7 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   codeBox: {
     flex: 1,
@@ -185,10 +217,18 @@ const styles = StyleSheet.create({
     borderColor: "#6C4EF5",
     backgroundColor: "#ffffff",
   },
+  errorText: {
+    fontFamily: "Poppins-Regular",
+    fontSize: 13,
+    color: "#DC2626",
+    textAlign: "center",
+    marginBottom: 12,
+  },
   resendRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 8,
   },
   resendText: {
     fontFamily: "Poppins-Regular",
