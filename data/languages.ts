@@ -25,14 +25,14 @@ export const languages: Language[] = [
     description: "A fascinating language with three writing systems",
     learners: "12.7M",
   },
-  {
-    code: "ko",
-    name: "Korean",
-    nativeName: "한국어",
-    flag: "https://flagcdn.com/w320/kr.png",
-    description: "The language of K-pop and K-dramas",
-    learners: "9.3M",
-  },
+  // {
+  //   code: "ko",
+  //   name: "Korean",
+  //   nativeName: "한국어",
+  //   flag: "https://flagcdn.com/w320/kr.png",
+  //   description: "The language of K-pop and K-dramas",
+  //   learners: "9.3M",
+  // },
   {
     code: "de",
     name: "German",
@@ -41,12 +41,12 @@ export const languages: Language[] = [
     description: "The most spoken language in Europe",
     learners: "8.1M",
   },
-  {
-    code: "zh",
-    name: "Chinese",
-    nativeName: "中文",
-    flag: "https://flagcdn.com/w320/cn.png",
-    description: "The most spoken language in the world",
-    learners: "7.4M",
-  },
+  // {
+  //   code: "zh",
+  //   name: "Chinese",
+  //   nativeName: "中文",
+  //   flag: "https://flagcdn.com/w320/cn.png",
+  //   description: "The most spoken language in the world",
+  //   learners: "7.4M",
+  // },
 ];
