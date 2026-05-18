@@ -12,6 +12,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSignUp, useSSO } from "@clerk/expo";
+import { usePostHog } from "posthog-react-native";
 import { images } from "@/constants/images";
 import SocialAuthButton from "@/components/SocialAuthButton";
 import VerificationModal from "@/components/VerificationModal";
@@ -20,6 +21,7 @@ export default function SignUpScreen() {
   const router = useRouter();
   const { signUp } = useSignUp();
   const { startSSOFlow } = useSSO();
+  const posthog = usePostHog();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,23 +34,30 @@ export default function SignUpScreen() {
     if (!signUp || !email.trim() || !password) return;
     setLoading(true);
     setError("");
+    posthog.capture("sign_up_email_submitted", { email: email.trim() });
     try {
       const { error: signUpError } = await signUp.password({
         emailAddress: email.trim(),
         password,
       });
       if (signUpError) {
-        setError(signUpError.longMessage ?? signUpError.message ?? "Sign-up failed.");
+        const msg = signUpError.longMessage ?? signUpError.message ?? "Sign-up failed.";
+        setError(msg);
+        posthog.capture("sign_up_failed", { reason: msg });
         return;
       }
       const { error: sendError } = await signUp.verifications.sendEmailCode();
       if (sendError) {
-        setError(sendError.longMessage ?? sendError.message ?? "Failed to send verification code.");
+        const msg = sendError.longMessage ?? sendError.message ?? "Failed to send verification code.";
+        setError(msg);
+        posthog.capture("sign_up_failed", { reason: msg });
         return;
       }
       setModalVisible(true);
     } catch (err: any) {
-      setError(err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong.");
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong.";
+      setError(msg);
+      posthog.capture("sign_up_failed", { reason: msg });
     } finally {
       setLoading(false);
     }
@@ -59,6 +68,11 @@ export default function SignUpScreen() {
     const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code });
     if (verifyError) throw verifyError;
     if (signUp.status === "complete") {
+      posthog.identify(email.trim(), {
+        $set: { email: email.trim() },
+        $set_once: { sign_up_date: new Date().toISOString() },
+      });
+      posthog.capture("sign_up_completed", { email: email.trim() });
       await signUp.finalize({
         navigate: ({ decorateUrl }) => {
           setModalVisible(false);
@@ -80,6 +94,7 @@ export default function SignUpScreen() {
       const { createdSessionId, setActive } = await startSSOFlow({ strategy });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
+        posthog.capture("sso_auth_completed", { strategy, flow: "sign_up" });
         router.replace("/");
       }
     } catch (err: any) {
@@ -90,6 +105,7 @@ export default function SignUpScreen() {
         "Social sign-up failed.";
       console.error("SSO error:", err);
       setError(msg);
+      posthog.capture("sso_auth_failed", { strategy, reason: msg, flow: "sign_up" });
     }
   };
 
