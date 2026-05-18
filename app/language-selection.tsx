@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { usePostHog } from "posthog-react-native";
 import { languages } from "@/data/languages";
 import { images } from "@/constants/images";
 import { Language } from "@/types/learning";
@@ -18,6 +19,7 @@ import { useLanguageStore } from "@/store/languageStore";
 
 export default function LanguageSelectionScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const { setSelectedLanguage } = useLanguageStore();
   const [selected, setSelected] = useState<Language | null>(null);
   const [search, setSearch] = useState("");
@@ -154,6 +156,10 @@ export default function LanguageSelectionScreen() {
             disabled={!selected}
             onPress={() => {
               if (selected) {
+                posthog.capture("language_selected", {
+                  language_code: selected.code,
+                  language_name: selected.name,
+                });
                 setSelectedLanguage(selected);
                 router.replace("/");
               }

@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@clerk/expo";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { usePostHog } from "posthog-react-native";
 import { useLanguageStore } from "@/store/languageStore";
 import { images } from "@/constants/images";
 import { units } from "@/data/units";
@@ -56,6 +57,7 @@ const TODAY_PLAN: PlanItem[] = [
 
 export default function HomeScreen() {
   const { user } = useUser();
+  const posthog = usePostHog();
   const { selectedLanguage } = useLanguageStore();
 
   const firstName = user?.firstName ?? "there";
@@ -132,7 +134,11 @@ export default function HomeScreen() {
             <Text className="font-poppins text-[12px] text-white/75 mt-0.5">
               A1 • Unit {currentUnit?.order ?? 1}
             </Text>
-            <TouchableOpacity style={styles.continueBtn} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.continueBtn}
+              activeOpacity={0.85}
+              onPress={() => posthog.capture("continue_learning_tapped", { language_code: langCode, language_name: langName })}
+            >
               <Text className="font-poppins-semibold text-sm text-lingua-purple">
                 Continue
               </Text>

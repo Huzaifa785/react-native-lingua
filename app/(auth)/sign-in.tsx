@@ -12,6 +12,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSignIn, useSSO } from "@clerk/expo";
+import { usePostHog } from "posthog-react-native";
 import { images } from "@/constants/images";
 import SocialAuthButton from "@/components/SocialAuthButton";
 import VerificationModal from "@/components/VerificationModal";
@@ -20,6 +21,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const { signIn } = useSignIn();
   const { startSSOFlow } = useSSO();
+  const posthog = usePostHog();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,15 +32,20 @@ export default function SignInScreen() {
     if (!signIn || !email.trim()) return;
     setLoading(true);
     setError("");
+    posthog.capture("sign_in_email_submitted", { email: email.trim() });
     try {
       const { error: sendError } = await signIn.emailCode.sendCode({ emailAddress: email.trim() });
       if (sendError) {
-        setError(sendError.longMessage ?? sendError.message ?? "Failed to send code.");
+        const msg = sendError.longMessage ?? sendError.message ?? "Failed to send code.";
+        setError(msg);
+        posthog.capture("sign_in_failed", { reason: msg });
         return;
       }
       setModalVisible(true);
     } catch (err: any) {
-      setError(err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong.");
+      const msg = err?.errors?.[0]?.longMessage ?? err?.errors?.[0]?.message ?? "Something went wrong.";
+      setError(msg);
+      posthog.capture("sign_in_failed", { reason: msg });
     } finally {
       setLoading(false);
     }
@@ -49,6 +56,8 @@ export default function SignInScreen() {
     const { error: verifyError } = await signIn.emailCode.verifyCode({ code });
     if (verifyError) throw verifyError;
     if (signIn.status === "complete") {
+      posthog.identify(email.trim(), { $set: { email: email.trim() } });
+      posthog.capture("sign_in_completed", { email: email.trim() });
       await signIn.finalize({
         navigate: ({ decorateUrl }) => {
           setModalVisible(false);
@@ -70,6 +79,7 @@ export default function SignInScreen() {
       const { createdSessionId, setActive } = await startSSOFlow({ strategy });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
+        posthog.capture("sso_auth_completed", { strategy, flow: "sign_in" });
         router.replace("/");
       }
     } catch (err: any) {
@@ -80,6 +90,7 @@ export default function SignInScreen() {
         "Social sign-in failed.";
       console.error("SSO error:", err);
       setError(msg);
+      posthog.capture("sso_auth_failed", { strategy, reason: msg, flow: "sign_in" });
     }
   };
 
